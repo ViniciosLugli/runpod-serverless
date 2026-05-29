@@ -143,6 +143,16 @@
                     "default": 1,
                     "advanced": true
                 }
+            },
+            {
+                "key": "RUNPOD_HANDLER_MODE",
+                "input": {
+                    "name": "RunPod handler mode",
+                    "type": "string",
+                    "description": "Use one-shot for normal non-streaming responses. Use stream to enable RunPod aggregate streaming.",
+                    "default": "one-shot",
+                    "advanced": true
+                }
             }
         ]
     }

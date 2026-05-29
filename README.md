@@ -14,7 +14,8 @@ Supported local llama.cpp routes:
 - `v1/chat/completions`
 - `v1/completions`
 
-Streaming responses are supported through RunPod aggregate streaming.
+One-shot responses are the default. Streaming responses are supported by setting
+`RUNPOD_HANDLER_MODE=stream`.
 
 **Credits:** this project is based on [Jacob-ML/inference-worker](https://github.com/Jacob-ML/inference-worker), which is a fork of [SvenBrnn's `runpod-worker-ollama`](https://github.com/SvenBrnn/runpod-worker-ollama).
 
@@ -41,6 +42,7 @@ RunPod Hub indexes GitHub releases, not only commits. After changing this templa
 - `LLAMA_CACHE_DIR`: Hugging Face cache directory. Defaults to `/runpod-volume/huggingface-cache/hub`.
 - `LLAMA_STARTUP_TIMEOUT_SECONDS`: startup wait timeout. Defaults to `120`.
 - `MAX_CONCURRENCY`: maximum concurrent RunPod jobs. Default is `1`.
+- `RUNPOD_HANDLER_MODE`: `one-shot` or `stream`. Default is `one-shot`.
 
 Only set one mmproj source at a time. If any mmproj env var is set, do not also define `--mmproj` or `--mmproj-url` in `LLAMA_SERVER_CMD_ARGS`.
 
