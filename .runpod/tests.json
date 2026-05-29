@@ -9,7 +9,7 @@
         }
     ],
     "config": {
-        "gpuTypeId": "NVIDIA L4",
+        "gpuTypeId": "NVIDIA H100 80GB HBM3",
         "gpuCount": 1,
         "env": [
             {
