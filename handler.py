@@ -1,6 +1,7 @@
 """
-This is an empty file used to mark the repository as a Runpod-compatible
-serverless endpoint because they won't stop pretending it's not.
+RunPod Hub marker.
 
-I'm tired.
+The production handler is copied into the container from src/handler.py by the
+Dockerfile. This root file is present because RunPod Hub expects a repository
+level handler.py when validating deployable serverless projects.
 """

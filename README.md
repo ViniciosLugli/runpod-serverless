@@ -4,6 +4,8 @@
 
 # Serverless llama.cpp inference worker for RunPod
 
+[![Runpod](https://api.runpod.io/badge/ViniciosLugli/runpod-serverless)](https://console.runpod.io/hub/ViniciosLugli/runpod-serverless)
+
 This repository contains a serverless inference worker for running llama.cpp models on RunPod. It starts `llama-server` locally and forwards RunPod jobs to the OpenAI-compatible llama.cpp API.
 
 Supported local llama.cpp routes:
@@ -21,6 +23,8 @@ Streaming responses are supported through RunPod aggregate streaming.
 Use RunPod cached models whenever possible. Caching avoids repeated Hugging Face downloads and is the biggest controllable reduction in serverless startup time. See [cached models](./docs/cached.md).
 
 For low-latency serverless endpoints, configure active workers and model caching in RunPod. The worker code cannot prevent platform scale-to-zero cold starts by itself.
+
+RunPod Hub indexes GitHub releases, not only commits. After changing this template, create a new release so the Hub can build and test the latest version.
 
 ## Configuration
 
