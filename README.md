@@ -20,7 +20,7 @@ Streaming responses are supported through RunPod aggregate streaming.
 
 ## Setup
 
-Use RunPod cached models whenever possible. Caching avoids repeated Hugging Face downloads and is the biggest controllable reduction in serverless startup time. See [cached models](./docs/cached.md).
+Use RunPod cached models when the Hugging Face repository is small enough to cache as a whole. RunPod currently caches an entire repository, so multi-quant GGUF repos can be too large. See [cached models](./docs/cached.md).
 
 For low-latency serverless endpoints, configure active workers and model caching in RunPod. The worker code cannot prevent platform scale-to-zero cold starts by itself.
 
@@ -103,20 +103,23 @@ Set the RunPod endpoint Model field to:
 https://huggingface.co/llmfan46/Qwen3.6-35B-A3B-uncensored-heretic-GGUF
 ```
 
-Use:
+This public repo contains many GGUF quantizations. RunPod model caching may fail because it tries to cache the full repository, not only `Q4_K_M`. For this model, leave the RunPod Model field empty and let llama.cpp download only the selected quantization:
 
 ```text
-LLAMA_CACHED_MODEL=llmfan46/Qwen3.6-35B-A3B-uncensored-heretic-GGUF
-LLAMA_CACHED_GGUF_PATH=Qwen3.6-35B-A3B-uncensored-heretic-Q4_K_M.gguf
-LLAMA_CACHED_MMPROJ_PATH=Qwen3.6-35B-A3B-mmproj-BF16.gguf
-LLAMA_SERVER_CMD_ARGS=--ctx-size 8192 --cache-type-k f16 --cache-type-v f16 --flash-attn on -ngl 999 --image-min-tokens 1024 --image-max-tokens 1024 --batch-size 512 --ubatch-size 128 --parallel 1 --spec-type none --metrics --jinja --no-mmap
+LLAMA_SERVER_CMD_ARGS=-hf llmfan46/Qwen3.6-35B-A3B-uncensored-heretic-GGUF:Q4_K_M --ctx-size 8192 --cache-type-k f16 --cache-type-v f16 --flash-attn on -ngl 999 --image-min-tokens 1024 --image-max-tokens 1024 --batch-size 512 --ubatch-size 128 --parallel 1 --spec-type none --metrics --jinja --no-mmap
+LLAMA_CACHED_MODEL=
+LLAMA_CACHED_GGUF_PATH=
+LLAMA_CACHED_MMPROJ_PATH=
+LLAMA_MMPROJ_URL=https://huggingface.co/llmfan46/Qwen3.6-35B-A3B-uncensored-heretic-GGUF/resolve/main/Qwen3.6-35B-A3B-uncensored-heretic-mmproj-BF16.gguf
 MAX_CONCURRENCY=1
 ```
 
-If RunPod does not cache the mmproj file, leave `LLAMA_CACHED_MMPROJ_PATH` empty and use:
+If you mirror only the selected GGUF and mmproj into a small Hugging Face repository, cache mode is safe:
 
 ```text
-LLAMA_MMPROJ_URL=https://huggingface.co/llmfan46/Qwen3.6-35B-A3B-uncensored-heretic-GGUF/resolve/main/Qwen3.6-35B-A3B-mmproj-BF16.gguf
+LLAMA_CACHED_MODEL=your-user/your-single-quant-repo
+LLAMA_CACHED_GGUF_PATH=Qwen3.6-35B-A3B-uncensored-heretic-Q4_K_M.gguf
+LLAMA_CACHED_MMPROJ_PATH=Qwen3.6-35B-A3B-uncensored-heretic-mmproj-BF16.gguf
 ```
 
 ## License

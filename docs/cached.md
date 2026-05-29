@@ -8,6 +8,8 @@ RunPod model caching stores Hugging Face snapshots on local worker storage under
 
 The worker resolves cached files from that directory and passes local paths to `llama-server`. This prevents invalid launches such as `-m None` and avoids repeated model downloads during serverless startup.
 
+RunPod currently caches the whole Hugging Face repository. Repositories containing many GGUF quantizations can be too large to cache reliably. For those repos, either create a small mirror repo with only the required GGUF files, or leave cached model mode disabled and use llama.cpp `-hf owner/repo:quant` in `LLAMA_SERVER_CMD_ARGS`.
+
 ## Main Model
 
 Set the RunPod endpoint Model field to the Hugging Face model URL:
@@ -57,7 +59,8 @@ It exits non-zero if the file cannot be found.
 To reduce serverless startup time:
 
 - use RunPod model caching
-- keep the model and mmproj in the same Hugging Face repo when possible
+- keep the model and mmproj in the same small Hugging Face repo when possible
+- avoid caching multi-quant GGUF repositories unless the full repo size is acceptable
 - avoid `--mmproj-url` for large projectors if cache can be used
 - configure active workers in RunPod when low first-token latency matters
 - keep `MAX_CONCURRENCY=1` for large single-slot llama.cpp models unless `--parallel` is intentionally increased
