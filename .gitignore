@@ -204,6 +204,10 @@ cython_debug/
 # Ruff stuff:
 .ruff_cache/
 
+# Local analysis artifacts
+.code-review-graph/
+llama.server.log
+
 # PyPI configuration file
 .pypirc
 

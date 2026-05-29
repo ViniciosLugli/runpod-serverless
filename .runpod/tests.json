@@ -15,6 +15,10 @@
             {
                 "key": "LLAMA_SERVER_CMD_ARGS",
                 "value": "-hf unsloth/gemma-3-270m-it-GGUF:IQ2_XXS --ctx-size 512 -ngl 999"
+            },
+            {
+                "key": "MAX_CONCURRENCY",
+                "value": "1"
             }
         ],
         "allowedCudaVersions": [

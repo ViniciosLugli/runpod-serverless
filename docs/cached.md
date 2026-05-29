@@ -1,63 +1,63 @@
-# Using cached models
+# Using Cached Models
 
-## Introduction
+RunPod model caching stores Hugging Face snapshots on local worker storage under:
 
-The classic way of loading a model from the Hugging Face Hub with the `LLAMA_SERVER_CMD_ARGS` is as follows:
-
-```bash
--hf /path/to/model.gguf:Q4_K_M --ctx-size 4096 # etc...
+```text
+/runpod-volume/huggingface-cache/hub
 ```
 
-However, this will cause every worker to download the model from the Hugging Face Hub every time it is started, which can be slow and inefficient.
+The worker resolves cached files from that directory and passes local paths to `llama-server`. This prevents invalid launches such as `-m None` and avoids repeated model downloads during serverless startup.
 
-A naive way to cache the model would be to store it on a network volume in RunPod and reference the model files this way:
+## Main Model
 
-```bash
--m /runpod-volume/model.gguf --ctx-size 4096 # etc...
+Set the RunPod endpoint Model field to the Hugging Face model URL:
+
+```text
+https://huggingface.co/unsloth/gemma-3-270m-it-GGUF
 ```
 
-Unfortunately, network volume performance is often not sufficient for loading large models, leading to long load times. RunPod introduced a [caching mechanism](https://docs.runpod.io/serverless/endpoints/model-caching) to solve this problem.
+Then set:
 
-The `inference-worker` for llama.cpp now supports this caching mechanism.
-
-## How to use the new caching mechanism
-
-It ships the `src/find_cached.py` script which can be used to reference any Hugging Face model of your choice and get its cached path on the local worker storage.
-
-Here is how the script can be used independently (which you will likely never need to do):
-
-```bash
-python3 src/find_cached.py HF_MODEL_ID GGUF_PATH_IN_REPO
+```text
+LLAMA_CACHED_MODEL=unsloth/gemma-3-270m-it-GGUF
+LLAMA_CACHED_GGUF_PATH=gemma-3-270m-it-Q8_0.gguf
 ```
 
-Example:
+Do not put `-m`, `--model`, `-hf`, or `--hf-repo` in `LLAMA_SERVER_CMD_ARGS` while cached model mode is enabled.
 
-```bash
-python3 src/find_cached.py unsloth/gemma-3-270m-it-GGUF gemma-3-270m-it-Q8_0.gguf
+## Multimodal Projector
+
+If the mmproj file is in the same cached Hugging Face repository, set:
+
+```text
+LLAMA_CACHED_MMPROJ_PATH=mmproj-file.gguf
 ```
 
-Or, if your model is in a folder (an edge case nobody seems to be thinking about, driving me absolutely crazy):
+If RunPod does not cache the mmproj file, use one of:
 
-```bash
-python3 src/find_cached.py jacob-ml/jacob-24b models/jacob-24b-q4_k_m.gguf
+```text
+LLAMA_MMPROJ_PATH=/runpod-volume/path/to/mmproj.gguf
+LLAMA_MMPROJ_URL=https://huggingface.co/user/repo/resolve/main/mmproj.gguf
 ```
 
-We will now integrate this into our workflow. Hang tight.
+Set only one mmproj source. Do not also pass `--mmproj` or `--mmproj-url` in `LLAMA_SERVER_CMD_ARGS`.
 
-## Step-by-step guide
+## Helper
 
-1.  First of all, please enter the Hugging Face URL of the model you want to use in RunPod's `Model` field of your worker settings.
+The cache helper can be used manually:
 
-    Example: For the model `unsloth/gemma-3-270m-it-GGUF`, you would enter `https://huggingface.co/unsloth/gemma-3-270m-it-GGUF`.
+```bash
+python3 src/find_cached.py HF_MODEL_ID PATH_IN_REPO
+```
 
-2.  Now, in the environment variables, do NOT enter the `-hf` argument as before and also do NOT define `-m` in the `LLAMA_SERVER_CMD_ARGS`. The inference worker will take care of that for you.
+It exits non-zero if the file cannot be found.
 
-    Instead, set the `LLAMA_CACHED_MODEL` to the model ID, a.e. `unsloth/gemma-3-270m-it-GGUF`. Then, set the `LLAMA_CACHED_GGUF_PATH` to the path of the GGUF file in the repository, e.g. `gemma-3-270m-it-Q8_0.gguf`.
+## Startup Time
 
-3. Finally, in the `LLAMA_SERVER_CMD_ARGS`, you can now simply add the other arguments you want to use, e.g.:
+To reduce serverless startup time:
 
-    ```bash
-    --ctx-size 4096 --temp 0.7 --top-p 0.9
-    ```
-
-4.  Done! The rest will be handled by the inference worker automatically. When the worker starts, it will resolve the cached model path and launch `llama-server` with the correct arguments.
+- use RunPod model caching
+- keep the model and mmproj in the same Hugging Face repo when possible
+- avoid `--mmproj-url` for large projectors if cache can be used
+- configure active workers in RunPod when low first-token latency matters
+- keep `MAX_CONCURRENCY=1` for large single-slot llama.cpp models unless `--parallel` is intentionally increased

@@ -4,32 +4,117 @@
 
 # Serverless llama.cpp inference worker for RunPod
 
-This repository contains a serverless inference worker for running llama.cpp models on RunPod. It uses the `llama-server` image to provide an API for interacting with the models.
-The following OpenAI API endpoints are supported:
+This repository contains a serverless inference worker for running llama.cpp models on RunPod. It starts `llama-server` locally and forwards RunPod jobs to the OpenAI-compatible llama.cpp API.
+
+Supported local llama.cpp routes:
 
 - `v1/models`
 - `v1/chat/completions`
 - `v1/completions`
 
-Streaming responses is also supported.
+Streaming responses are supported through RunPod aggregate streaming.
 
-**Important!** This project is still relatively new. Please [open a new issue](https://github.com/Jacob-ML/inference-worker/issues/new) if you encounter any problems in order to get help.
-
-**This is a fork of [SvenBrnn's `runpod-worker-ollama`](https://github.com/SvenBrnn/runpod-worker-ollama).**
+**Credits:** this project is based on [Jacob-ML/inference-worker](https://github.com/Jacob-ML/inference-worker), which is a fork of [SvenBrnn's `runpod-worker-ollama`](https://github.com/SvenBrnn/runpod-worker-ollama).
 
 ## Setup
 
-To get the best performance out of this worker, it is recommended to use cached models. Please see the [cached models documentation](./docs/cached.md) for more information, this is **highly recommended and will save many resources**.
+Use RunPod cached models whenever possible. Caching avoids repeated Hugging Face downloads and is the biggest controllable reduction in serverless startup time. See [cached models](./docs/cached.md).
+
+For low-latency serverless endpoints, configure active workers and model caching in RunPod. The worker code cannot prevent platform scale-to-zero cold starts by itself.
 
 ## Configuration
 
-The worker can be configured via environment variables set in the RunPod hub configuration:
+- `LLAMA_SERVER_CMD_ARGS`: command line arguments for `llama-server`. Do not define `--port`. If cached model mode is enabled, do not define `-hf` or `-m` here.
+- `LLAMA_CACHED_MODEL`: Hugging Face repo id for RunPod cached model mode.
+- `LLAMA_CACHED_GGUF_PATH`: GGUF path inside the Hugging Face repo.
+- `LLAMA_CACHED_MMPROJ_PATH`: optional mmproj path inside the same cached Hugging Face repo.
+- `LLAMA_MMPROJ_PATH`: optional local or network-volume mmproj path.
+- `LLAMA_MMPROJ_URL`: optional mmproj URL passed to `llama-server --mmproj-url`.
+- `LLAMA_DEFAULT_MODEL`: optional model id used when requests omit `model`.
+- `LLAMA_OPENAI_BASE_URL`: optional local OpenAI base URL. Defaults to `http://localhost:3098/v1/`.
+- `LLAMA_OPENAI_API_KEY`: optional API key for the local OpenAI client. Defaults to `unused`.
+- `LLAMA_SERVER_HOST`: optional bind host. Defaults to `0.0.0.0`.
+- `LLAMA_CACHE_DIR`: Hugging Face cache directory. Defaults to `/runpod-volume/huggingface-cache/hub`.
+- `LLAMA_STARTUP_TIMEOUT_SECONDS`: startup wait timeout. Defaults to `120`.
+- `MAX_CONCURRENCY`: maximum concurrent RunPod jobs. Default is `1`.
 
-- `LLAMA_SERVER_CMD_ARGS`: Command line arguments (argv) for the `llama-server` binary. Example: `-hf /path/to/model.gguf:Q4_K_M --ctx-size 4096`. **IMPORTANT**: Please do not define the port argument here, as the worker will always use port `3098` automatically.
-- `MAX_CONCURRENCY`: Maximum number of concurrent requests the worker can handle. Default is `8`.
+Only set one mmproj source at a time. If any mmproj env var is set, do not also define `--mmproj` or `--mmproj-url` in `LLAMA_SERVER_CMD_ARGS`.
+
+## Request Formats
+
+RunPod queue requests use the standard wrapper:
+
+```json
+{
+  "input": {
+    "messages": [
+      {"role": "user", "content": "Hello"}
+    ],
+    "temperature": 0,
+    "max_tokens": 128
+  }
+}
+```
+
+Vision messages pass through to llama.cpp unchanged:
+
+```json
+{
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {"type": "text", "text": "Describe this image."},
+          {"type": "image_url", "image_url": {"url": "data:image/png;base64,..."}}
+        ]
+      }
+    ],
+    "max_tokens": 128
+  }
+}
+```
+
+You can also proxy raw OpenAI-compatible routes:
+
+```json
+{
+  "input": {
+    "openai_route": "/v1/chat/completions",
+    "openai_input": {
+      "messages": [{"role": "user", "content": "Hello"}],
+      "temperature": 0
+    }
+  }
+}
+```
+
+For direct OpenAI SDK `base_url` usage, expose a RunPod Pod or load-balanced service to `llama-server` and point the SDK at its `/v1` URL. Queue-based serverless endpoints still require `/run` or `/runsync` with the `input` wrapper.
+
+## Qwen3.6 Vision Example
+
+Set the RunPod endpoint Model field to:
+
+```text
+https://huggingface.co/llmfan46/Qwen3.6-35B-A3B-uncensored-heretic-GGUF
+```
+
+Use:
+
+```text
+LLAMA_CACHED_MODEL=llmfan46/Qwen3.6-35B-A3B-uncensored-heretic-GGUF
+LLAMA_CACHED_GGUF_PATH=Qwen3.6-35B-A3B-uncensored-heretic-Q4_K_M.gguf
+LLAMA_CACHED_MMPROJ_PATH=Qwen3.6-35B-A3B-mmproj-BF16.gguf
+LLAMA_SERVER_CMD_ARGS=--ctx-size 8192 --cache-type-k f16 --cache-type-v f16 --flash-attn on -ngl 999 --image-min-tokens 1024 --image-max-tokens 1024 --batch-size 512 --ubatch-size 128 --parallel 1 --spec-type none --metrics --jinja --no-mmap
+MAX_CONCURRENCY=1
+```
+
+If RunPod does not cache the mmproj file, leave `LLAMA_CACHED_MMPROJ_PATH` empty and use:
+
+```text
+LLAMA_MMPROJ_URL=https://huggingface.co/llmfan46/Qwen3.6-35B-A3B-uncensored-heretic-GGUF/resolve/main/Qwen3.6-35B-A3B-mmproj-BF16.gguf
+```
 
 ## License
 
-Please see the [LICENSE](./LICENSE) file for more information.
-
-[![Runpod badge](https://api.runpod.io/badge/Jacob-ML/inference-worker)](https://console.runpod.io/hub/Jacob-ML/inference-worker)
+Please see [LICENSE](./LICENSE).

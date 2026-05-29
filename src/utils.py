@@ -1,27 +1,16 @@
-"""
-This module contains utility classes and functions for handling job inputs.
-"""
-
-
 class JobInput:
-    """
-    Class to parse and store job input data. It extracts fields such as
-    llm_input, stream, openai_route, and openai_input from the provided job
-    dictionary.
-    """
-
     def __init__(self, job):
-        """
-        Initialize the JobInput instance by parsing the job dictionary.
-
-        Default values:
-        - llm_input: job["messages"] if present, else job["prompt"]
-        - stream: False
-        - openai_route: None
-        - openai_input: None
-        """
-
+        job = job or {}
+        self.raw = dict(job or {})
         self.llm_input = job.get("messages", job.get("prompt"))
         self.stream = job.get("stream", False)
         self.openai_route = job.get("openai_route")
-        self.openai_input = job.get("openai_input")
+        self.openai_input = job.get("openai_input") or self._extract_openai_input()
+
+    def _extract_openai_input(self):
+        excluded = {"openai_route", "openai_input"}
+        return {
+            key: value
+            for key, value in self.raw.items()
+            if key not in excluded and value is not None
+        }

@@ -1,39 +1,36 @@
-"""
-Runpod handler for processing jobs using LlamaCPP or OpenAI engines. This
-module defines an asynchronous handler function that receives job inputs,
-instantiates the appropriate engine based on the job input, and yields
-generated output in a streaming fashion.
-"""
-
-from typing import Any
-import runpod
 import os
-from utils import JobInput
-from engine import LlamaCPPEngine, LlamaCPPOpenAIEngine
+import sys
+import traceback
+from typing import Any
 
-# set max concurrency from environment variable or default
-DEFAULT_MAX_CONCURRENCY = 8
+import runpod
+from runpod import RunPodLogger
+
+from engine import LlamaCPPEngine, LlamaCPPOpenAIEngine
+from utils import JobInput
+
+DEFAULT_MAX_CONCURRENCY = 1
 
 max_concurrency = int(os.getenv("MAX_CONCURRENCY", DEFAULT_MAX_CONCURRENCY))
+log = RunPodLogger()
+llama_engine = LlamaCPPEngine()
+openai_engine = LlamaCPPOpenAIEngine()
 
 
 async def handler(job: Any):
-    """
-    Asynchronous handler function for processing jobs. It receives a job
-    dictionary, extracts the input, determines the appropriate engine to use
-    (LlamaCPP or OpenAI), and yields generated output in a streaming manner.
-    """
+    try:
+        job_input = JobInput(job.get("input") or {})
+        engine = openai_engine if job_input.openai_route else llama_engine
 
-    job_input = JobInput(job["input"])
-    engine_class = (
-        LlamaCPPOpenAIEngine if job_input.openai_route else LlamaCPPEngine
-    )
-    engine = engine_class()
-
-    job = engine.generate(job_input)
-
-    async for batch in job:
-        yield batch
+        async for batch in engine.generate(job_input):
+            yield batch
+    except Exception as exc:
+        message = str(exc)
+        log.error(f"Error during inference: {message}")
+        log.error(traceback.format_exc())
+        if "cuda" in message.lower():
+            sys.exit(1)
+        yield {"error": message}
 
 
 runpod.serverless.start(

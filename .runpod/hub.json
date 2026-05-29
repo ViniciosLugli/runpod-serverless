@@ -16,8 +16,8 @@
                 "input": {
                     "name": "Command line arguments for llama-server",
                     "type": "string",
-                    "description": "Launch command line arguments (argv) for the llama-server binary. Do not define the port. If using caching, do not define -hf or -m here.",
-                    "default": "-hf unsloth/gemma-3-270m-it-GGUF:Q6_K --ctx-size 4096 -ngl 999",
+                    "description": "Launch argv for llama-server. Do not define --port. If cached model mode is enabled, do not define -hf or -m here. If using mmproj env fields, do not define --mmproj here.",
+                    "default": "--ctx-size 4096 -ngl 999",
                     "advanced": false
                 }
             },
@@ -42,12 +42,102 @@
                 }
             },
             {
+                "key": "LLAMA_CACHED_MMPROJ_PATH",
+                "input": {
+                    "name": "Path to mmproj file in the same Hugging Face Hub repository",
+                    "type": "string",
+                    "description": "Optional cached multimodal projector path. Use when the mmproj file is in the same cached Hugging Face repository as LLAMA_CACHED_MODEL.",
+                    "default": "",
+                    "advanced": true
+                }
+            },
+            {
+                "key": "LLAMA_MMPROJ_PATH",
+                "input": {
+                    "name": "Local path to mmproj file",
+                    "type": "string",
+                    "description": "Optional local or network-volume path to a multimodal projector file. Do not combine with LLAMA_CACHED_MMPROJ_PATH or LLAMA_MMPROJ_URL.",
+                    "default": "",
+                    "advanced": true
+                }
+            },
+            {
+                "key": "LLAMA_MMPROJ_URL",
+                "input": {
+                    "name": "URL to mmproj file",
+                    "type": "string",
+                    "description": "Optional URL for llama-server --mmproj-url. Useful when RunPod cached model mode only caches the main GGUF.",
+                    "default": "",
+                    "advanced": true
+                }
+            },
+            {
+                "key": "LLAMA_DEFAULT_MODEL",
+                "input": {
+                    "name": "Default OpenAI model id",
+                    "type": "string",
+                    "description": "Optional model id used by the worker when a request omits model. Leave empty to read the first model from llama-server.",
+                    "default": "",
+                    "advanced": true
+                }
+            },
+            {
+                "key": "LLAMA_OPENAI_BASE_URL",
+                "input": {
+                    "name": "Local OpenAI base URL",
+                    "type": "string",
+                    "description": "OpenAI-compatible base URL used by the worker to call the local llama-server.",
+                    "default": "http://localhost:3098/v1/",
+                    "advanced": true
+                }
+            },
+            {
+                "key": "LLAMA_OPENAI_API_KEY",
+                "input": {
+                    "name": "Local OpenAI API key",
+                    "type": "string",
+                    "description": "API key for the local OpenAI client. llama-server does not require one by default.",
+                    "default": "unused",
+                    "advanced": true
+                }
+            },
+            {
+                "key": "LLAMA_SERVER_HOST",
+                "input": {
+                    "name": "llama-server bind host",
+                    "type": "string",
+                    "description": "Host passed to llama-server when LLAMA_SERVER_CMD_ARGS does not define --host.",
+                    "default": "0.0.0.0",
+                    "advanced": true
+                }
+            },
+            {
+                "key": "LLAMA_CACHE_DIR",
+                "input": {
+                    "name": "RunPod Hugging Face cache directory",
+                    "type": "string",
+                    "description": "Directory containing RunPod cached Hugging Face hub snapshots.",
+                    "default": "/runpod-volume/huggingface-cache/hub",
+                    "advanced": true
+                }
+            },
+            {
+                "key": "LLAMA_STARTUP_TIMEOUT_SECONDS",
+                "input": {
+                    "name": "llama-server startup timeout seconds",
+                    "type": "number",
+                    "description": "How long the worker waits for llama-server to print that it is listening before failing startup.",
+                    "default": 120,
+                    "advanced": true
+                }
+            },
+            {
                 "key": "MAX_CONCURRENCY",
                 "input": {
                     "name": "Maximum Concurrency",
                     "type": "number",
-                    "description": "Maximum number of concurrent requests to handle (default: 8).",
-                    "default": 8,
+                    "description": "Maximum number of concurrent requests to handle. Use 1 for large single-slot llama.cpp models unless --parallel is intentionally increased.",
+                    "default": 1,
                     "advanced": true
                 }
             }
